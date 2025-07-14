@@ -53,3 +53,5 @@ BMduino-UNO（BM53A367A） 是採用Holtek 32-bit MCU HT32F52367，支援 Arduin
 執行單位：台灣區電機電子工業同業公會 
 合作單位：盛群半導體股份有限公司、社團法人中華倍創STEAM教育發展協會
 
+
+
