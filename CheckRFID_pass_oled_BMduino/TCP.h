@@ -10,8 +10,8 @@
 //---------宣告變數--------
 //*********** wifi information ****************//
 /*** Connect的wifi的Access Point SSID & SSIDPWD*/
-#define WIFI_SSID "NUKIOT"     // 無線網路的 SSID (名稱)
-#define WIFI_PASS "iot12345"   // 無線網路的密碼
+#define WIFI_SSID "NCNUIOT"     // 無線網路的 SSID (名稱)
+#define WIFI_PASS "0123456789"   // 無線網路的密碼
 
 
 //---------全域變數--------

@@ -9,35 +9,24 @@
 ******************************************************************/
 #include "OledLib.h"  // OLED 顯示模組自訂函式庫
 
+//-------自定義函式宣告區-----------
+void initSensor();   // 初始化所有感測模組
+void initAll() ;  // 初始化整體系統
+//-------自定義函式宣告區-----------
+
 
 void setup()
 {
     initAll() ;
-    drawPicture(0,0,BestModule_LOGO,128,64)  ;  // 顯示 LOGO 點陣圖
+    printText(0,0,"Best Module")  ;  // 顯示 LOGO 點陣圖
+    printText(0,2,"BMduino UNO")  ;  // 顯示 LOGO 點陣圖
+    printText(0,4,"ESP12F")  ;  // 顯示 LOGO 點陣圖
     delay(1000);
-    invdrawPicture(0,0,BestModule_LOGO,128,64)  ;  // 顯示 LOGO 點陣圖
-    clearScreen()  ;  //清除螢幕
-    delay(1000);
-    setFont(FontTable_6X8) ;  //設定字形
-    printText(1,1,"Hello") ;
-    printChar(2,2,'T') ;
-    printNumber(2,3,456) ;
-    printFloat(2,4,456.34) ;
-     delay(2000);
-    clearScreen()  ;  //清除螢幕
-    for(int i=0 ; i <100;i+=3)
-    { 
-        drawPoint(i,30,1) ;
-    }
-     delay(2000);
-    clearScreen()  ;  //清除螢幕
-    for(int i=0;i<60;i+=3)
-    {
-      drawLine(0,i,127,63-i,1) ;
-    }
-       delay(2000);
-    clearScreen()  ;  //清除螢幕
-    drawBox(0,0,120,62,1) ;
+    scrollRight(0,7,0x07,0x01) ;
+    delay(2000);
+    scrollLeft(0,7,0x07,0x01) ;
+    delay(2000); 
+    stopScroll() ;   
     //updateScreen() ;  //顯示當前緩衝區的內容
   // 以下為測試各種顯示功能的函式呼叫
   // test_drawString_6x8();             // 顯示 6x8 字型字串
@@ -57,11 +46,13 @@ void loop()
   // 主程式不重複執行，測試功能已於 setup() 完成
 }
 
+//----------初始化所有感測模組------------
 void initSensor()   // 初始化所有感測模組
 {
   initOled(); //初始化OLED12864，0.96吋OLED顯示模組 BMD31M090
 }
 
+//---------初始化整體系統------
 void initAll()   // 初始化整體系統
 {
   Serial.begin(9600); // 啟動序列埠，設定速率為 9600 bps（監控輸出與除錯使用）

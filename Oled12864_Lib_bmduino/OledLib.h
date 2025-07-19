@@ -8,19 +8,32 @@
     SCL 接腳：D19
     SDA 接腳：D18
 ******************************************************************/
-#include "BMD31M090.h"  // OLED 顯示模組函式庫
-#include "BestModuleLogo.h"     // 含 LOGO 圖示的點陣圖資料
+/*****************************************************************
+File:         display.ino
+Description:  1.Wire interface (Clock Frequency: 400K) is used to communicate with BMD31M090.
+              2.Hardware Serial (BAUDRATE 115200) is used to communicate with Serial Port Monitor.
+connection method: sclPin:SCL(D19) sdaPin:SDA(D18)
+******************************************************************/
+#include "BMD31M090.h"  // 引入 BMD31M090 OLED 顯示模組的函式庫
+#include "Bitmap.h"     // 引入位圖相關的函式庫
 
-// 定義顯示模組參數
-#define BMD31M090_WIDTH   128     // OLED 寬度為 128 像素
-#define BMD31M090_HEIGHT  64      // OLED 高度為 64 像素
-#define BMD31M090_ADDRESS 0x3C    // 預設的 I2C 位址，可為 0x3C 或 0x3D（視模組設定）
+//------全域變數區--------------------------
+// 定義 BMD31M090 顯示模組的寬度和高度（單位：像素）
+#define BMD31M090_WIDTH   128        
+#define BMD31M090_HEIGHT  64         
 
-uint8_t t = ' ';  // 用來顯示 ASCII 字元與編碼的變數
+// 設定 BMD31M090 顯示模組的 I2C 地址，根據電路圖來設定 I2C 地址
+#define BMD31M090_ADDRESS 0x3C       
+// #define BMD31M090_ADDRESS 0x3D   // 可以配置的 I2C 地址：Addr0:0x3C 或 Addr1:0x3D
 
-// 建立 OLED 物件（此例使用 Wire1，也可用 Wire / Wire2）
-BMD31M090 BMD31(BMD31M090_WIDTH, BMD31M090_HEIGHT, &Wire1);
-//--------------------------------------
+uint8_t t = ' ';  // 宣告變數 t，初始化為空格字元
+
+//-----------------感測元件物件區-------------------------
+// 創建 BMD31M090 顯示模組的物件，並使用 HW Wire 進行通訊
+//BMD31M090 BMD31(BMD31M090_WIDTH, BMD31M090_HEIGHT, &Wire);
+//BMD31M090     BMD31(BMD31M090_WIDTH, BMD31M090_HEIGHT, &Wire1); //Please uncomment out this line of code if you use HW Wire1 on BMduino
+BMD31M090     BMD31(BMD31M090_WIDTH, BMD31M090_HEIGHT, &Wire2); //Please uncomment out this line of code if you use HW Wire1 on BMduino
+//----------自定義函式區宣告--------------
 void initOled() ;//初始化OLED12864，0.96吋OLED顯示模組 BMD31M090
 void test_drawString_6x8();             // 顯示 6x8 字型字串
 void test_drawString_8x16();            // 顯示 8x16 字型字串
@@ -85,14 +98,56 @@ void drawVline(int x,int y, int width, int pixelColor) ; //在xcolumn,y row位�
     //     1 (pixelColor_WHITE)：像素顏色為白
     //     2 (pixelColor_INVERSE)：像素顏色翻轉
 
+//-------------向右捲動-----------------------
+void scrollRight(int x, int y, int speed,int dir); //向右捲動
+  // x:startRow：起始列位址，範圍 0~7
+  // y:endRow：結束列位址，範圍 0~7
+  // speed:scrollSpeed：滾動速度
+  //   0x07 (SCROLL_2FRAMES)：滾動 2 幀
+  //   0x04 (SCROLL_3FRAMES)：滾動 3 幀
+  //   0x05 (SCROLL_4FRAMES)：滾動 4 幀
+  //   0x00 (SCROLL_5FRAMES)：滾動 5 幀
+  //   0x06 (SCROLL_25FRAMES)：滾動 25 幀
+  //   0x01 (SCROLL_64FRAMES)：滾動 64 幀
+  //   0x02 (SCROLL_128FRAMES)：滾動 128 幀
+  //   0x03 (SCROLL_256FRAMES)：滾動 256 幀
+  // dir:scrollVDirection：對角滾動方向
+  //   0x00 (SCROLLV_NONE)：不滾動
+  //   0x01 (SCROLLV_TOP)：向上滾動
+  //   0x3F (SCROLLV_BOTTOM)：向下滾動
+  
+  //-------------向左捲動------------------------------------
+void scrollLeft(int x, int y, int speed,int dir); //向左捲動
+  // x:startRow：起始列位址，範圍 0~7
+  // y:endRow：結束列位址，範圍 0~7
+  // speed:scrollSpeed：滾動速度
+  //   0x07 (SCROLL_2FRAMES)：滾動 2 幀
+  //   0x04 (SCROLL_3FRAMES)：滾動 3 幀
+  //   0x05 (SCROLL_4FRAMES)：滾動 4 幀
+  //   0x00 (SCROLL_5FRAMES)：滾動 5 幀
+  //   0x06 (SCROLL_25FRAMES)：滾動 25 幀
+  //   0x01 (SCROLL_64FRAMES)：滾動 64 幀
+  //   0x02 (SCROLL_128FRAMES)：滾動 128 幀
+  //   0x03 (SCROLL_256FRAMES)：滾動 256 幀
+  // dir:scrollVDirection：對角滾動方向
+  //   0x00 (SCROLLV_NONE)：不滾動
+  //   0x01 (SCROLLV_TOP)：向上滾動
+  //   0x3F (SCROLLV_BOTTOM)：向下滾動
+  
+  
+  //-----------------停止滾動-----------------------
+void stopScroll(); //停止滾動
 
-//--------------------------------------
-void initOled() //初始化OLED12864，0.96吋OLED顯示模組 BMD31M090
+//--------------物件初始化區---------------------
+void initOled()  //OLED12863物件初始化區
 {
-  BMD31.begin(BMD31M090_ADDRESS);  // 初始化 OLED 顯示模組
-  delay(100);  // 建議初始化延遲時間
+  // 初始化 BMD31M090 顯示模組，使用 I2C 地址進行通訊
+  BMD31.begin(BMD31M090_ADDRESS);
+  delay(100);  // 建議的初始化延遲
 
 }
+
+//-------------設定字形----------------
 void setFont(const unsigned char* font)   //設定字形
 {
     //   font：字體格式
@@ -103,31 +158,37 @@ void setFont(const unsigned char* font)   //設定字形
     BMD31.setFont(font);  // 設定字型為 6x8
 }
 
-void updateScreen()   //顯示當前緩衝區的內容
+//----------顯示當前緩衝區的內容------------------
+void updateScreen()  //顯示當前緩衝區的內容   
 {
   BMD31.display();  //顯示當前緩衝區的內容
 }
 
+//--------在xcolumn,y row位置，印出文字--------
 void printText(int x,int y, String str)  //在xcolumn,y row位置，印出文字
 {
   BMD31.drawString((uint8_t)x, (uint8_t)y, (uint8_t*)str.c_str());
 }
 
-void printChar(int x,int y, char str)  //在xcolumn,y row位置，印出文字
+//-----------在xcolumn,y row位置，印出字元文字------------
+void printChar(int x,int y, char str)  //在xcolumn,y row位置，印出字元文字
 {
   BMD31.drawChar((uint8_t)x, (uint8_t)y, (uint8_t)str);
 }
 
+//--------在xcolumn,y row位置，印出整數-----------
 void printNumber(int x,int y, int num)  //在xcolumn,y row位置，印出整數
 {
   BMD31.drawNum((uint8_t)x, (uint8_t)y, (uint32_t)num,(uint8_t)(String(num).length()) );
 }
 
+//-----------在xcolumn,y row位置，印出浮點數-----------
 void printFloat(int x,int y, float num)  //在xcolumn,y row位置，印出浮點數
 {
-  printText(x, y, String(num) );
+  printText(x, y, String(num) );  //印出字串文字
 }
 
+//--------在xcolumn,y row位置，繪出一點-----------
 void drawPoint(int x,int y,int pixelColor) //在xcolumn,y row位置，繪出一點
 {
     //   x：x 座標，範圍 0~127
@@ -140,6 +201,7 @@ void drawPoint(int x,int y,int pixelColor) //在xcolumn,y row位置，繪出一�
     BMD31.display();
 }
 
+//---------畫(x1,y1) - (x2,y2) 的一條直線------------
 void drawLine(int x1,int y1,int x2,int y2,int pixelColor) //畫(x1,y1) - (x2,y2) 的一條直線
 {
     // x_Start：起點 x 座標
@@ -153,6 +215,8 @@ void drawLine(int x1,int y1,int x2,int y2,int pixelColor) //畫(x1,y1) - (x2,y2)
   BMD31.drawLine((uint8_t)x1,(uint8_t)y1,(uint8_t)x2,(uint8_t)y2,(uint8_t)pixelColor) ;//畫(x1,y1) - (x2,y2) 的一條直線
   BMD31.display();
 }
+
+//---------在xcolumn,y row位置，繪出width寬度的畫垂直線-------------
 void drawfastVline(int x,int y, int width, int pixelColor)  //在xcolumn,y row位置，繪出width寬度的畫垂直線
 {
     // x：x 座標，範圍 0~127
@@ -166,6 +230,7 @@ void drawfastVline(int x,int y, int width, int pixelColor)  //在xcolumn,y row�
   BMD31.display();
 }
 
+ //---------在xcolumn,y row位置，繪出width寬度的畫水平線---------
 void drawfastHline(int x,int y, int width, int pixelColor)  //在xcolumn,y row位置，繪出width寬度的畫水平線
 {
     // x：x 座標，範圍 0~127
@@ -179,6 +244,7 @@ void drawfastHline(int x,int y, int width, int pixelColor)  //在xcolumn,y row�
   BMD31.display();
 }
 
+//---------在xcolumn,y row位置，繪出width寬度的畫垂直線-------
 void drawVline(int x,int y, int width, int pixelColor)  //在xcolumn,y row位置，繪出width寬度的畫垂直線
 {
     // x：x 座標，範圍 0~127
@@ -192,6 +258,7 @@ void drawVline(int x,int y, int width, int pixelColor)  //在xcolumn,y row位置
   BMD31.display();
 }
 
+//--------在xcolumn,y row位置，繪出width寬度的畫水平線----------
 void drawHline(int x,int y, int width, int pixelColor)  //在xcolumn,y row位置，繪出width寬度的畫水平線
 {
     // x：x 座標，範圍 0~127
@@ -205,7 +272,8 @@ void drawHline(int x,int y, int width, int pixelColor)  //在xcolumn,y row位置
   BMD31.display();
 }
 
-void drawBox(int x1,int y1,int x2,int y2,int pixelColor) //畫(x1,y1) - (x2,y2) 的對角的一個矩形
+//-------畫(x1,y1) - (x2,y2) 的對角的繪出一個矩形-------
+void drawBox(int x1,int y1,int x2,int y2,int pixelColor) //畫(x1,y1) - (x2,y2) 的對角的繪出一個矩形
 {
     // x_Start：起點 x 座標
     // y_Start：起點 y 座標
@@ -222,38 +290,16 @@ void drawBox(int x1,int y1,int x2,int y2,int pixelColor) //畫(x1,y1) - (x2,y2) 
   BMD31.display();
 }
 
-
+//--------清除螢幕-----------
 void clearScreen()    //清除螢幕
 {
   BMD31.clearDisplay(); //清除螢幕資訊
   BMD31.display();  //更新螢幕資訊到螢幕硬體
 }
 
-
-
-
-void invdrawPicture(int x,int y, const uint8_t *pp,int width, int height) //使用黑色畫圖
+//-------使用黑色畫一張圖---------
+void invdrawPicture(int x,int y, const uint8_t *pp,int width, int height) //使用黑色畫一張圖
 {
-
-    // x：x 座標，範圍 0~127
-    // y：y 座標，範圍 0~63
-    // *Bitmap：點陣圖名稱
-    // w：點陣圖寬度
-    // h：點陣圖高度
-    // pixelColor：像素顏色
-    // 0 (pixelColor_BLACK)：像素顏色為黑
-    // 1 (pixelColor_WHITE)：像素顏色為白
-    // 2 (pixelColor_INVERSE)：像素顏色翻轉
-
-  BMD31.clearDisplay();
-  BMD31.drawBitmap((uint8_t)x, (uint8_t)y, pp, (uint8_t)width, (uint8_t)height, pixelColor_BLACK);
-  BMD31.display();
-
-
-}
-void drawPicture(int x,int y, const uint8_t *pp,int width, int height)  //使用白色畫圖
-{
-
     // x：x 座標，範圍 0~127
     // y：y 座標，範圍 0~63
     // *Bitmap：點陣圖名稱
@@ -264,12 +310,28 @@ void drawPicture(int x,int y, const uint8_t *pp,int width, int height)  //使用
     // 1 (pixelColor_WHITE)：像素顏色為白
     // 2 (pixelColor_INVERSE)：像素顏色翻轉
   BMD31.clearDisplay();
-  BMD31.drawBitmap((uint8_t)x, (uint8_t)y, pp, (uint8_t)width, (uint8_t)height, pixelColor_WHITE);
+  BMD31.drawBitmap((uint8_t)x, (uint8_t)y, pp, (uint8_t)width, (uint8_t)height, pixelColor_BLACK);//使用黑色畫一張圖
   BMD31.display();
-
-
 }
 
+//-------------使用白色畫一張圖-------------
+void drawPicture(int x,int y, const uint8_t *pp,int width, int height)  //使用白色畫一張圖
+{
+    // x：x 座標，範圍 0~127
+    // y：y 座標，範圍 0~63
+    // *Bitmap：點陣圖名稱
+    // w：點陣圖寬度
+    // h：點陣圖高度
+    // pixelColor：像素顏色
+    // 0 (pixelColor_BLACK)：像素顏色為黑
+    // 1 (pixelColor_WHITE)：像素顏色為白
+    // 2 (pixelColor_INVERSE)：像素顏色翻轉
+  BMD31.clearDisplay();
+  BMD31.drawBitmap((uint8_t)x, (uint8_t)y, pp, (uint8_t)width, (uint8_t)height, pixelColor_WHITE);  //使用白色畫一張圖
+  BMD31.display();
+}
+
+//----------降低亮度（省電模式）-------------
 void setsaveMode()  // 降低亮度（省電模式）
 {
   // dim：亮度選擇
@@ -278,15 +340,16 @@ void setsaveMode()  // 降低亮度（省電模式）
   BMD31.dim(TRUE);   // 降低亮度（省電模式）
 }
 
+//--------回復正常亮度-----------
 void setlightMode() // 回復正常亮度
 {
     // dim：亮度選擇
   //   true：暗
   //   false：正常亮度
-
     BMD31.dim(FALSE);  // 回復正常亮度
 }
 
+//---------設定螢幕反白模式-----------
 void setdisplayInverse()  //設定螢幕反白模式
 {
   //  BMD31.invertDisplay(parameter)：是否反白
@@ -295,12 +358,61 @@ void setdisplayInverse()  //設定螢幕反白模式
   BMD31.invertDisplay(TRUE); // invert Display Mode:black-on-white
 }
 
+//--------設定螢幕正常模式--------
 void setdisplayNormal()  //設定螢幕正常模式
 {
   //  BMD31.invertDisplay(parameter)：是否反白
   // true：白底黑字 (black-on-white)
   // false：黑底白字 (white-on-black)  
   BMD31.invertDisplay(FALSE); // invert Display Mode:black-on-white
+}
+
+//----------向右捲動------------------
+void scrollRight(int x, int y, int speed,int dir) //向右捲動
+{
+  // x:startRow：起始列位址，範圍 0~7
+  // y:endRow：結束列位址，範圍 0~7
+  // speed:scrollSpeed：滾動速度
+  //   0x07 (SCROLL_2FRAMES)：滾動 2 幀
+  //   0x04 (SCROLL_3FRAMES)：滾動 3 幀
+  //   0x05 (SCROLL_4FRAMES)：滾動 4 幀
+  //   0x00 (SCROLL_5FRAMES)：滾動 5 幀
+  //   0x06 (SCROLL_25FRAMES)：滾動 25 幀
+  //   0x01 (SCROLL_64FRAMES)：滾動 64 幀
+  //   0x02 (SCROLL_128FRAMES)：滾動 128 幀
+  //   0x03 (SCROLL_256FRAMES)：滾動 256 幀
+  // dir:scrollVDirection：對角滾動方向
+  //   0x00 (SCROLLV_NONE)：不滾動
+  //   0x01 (SCROLLV_TOP)：向上滾動
+  //   0x3F (SCROLLV_BOTTOM)：向下滾動
+BMD31.startScrollRight((uint8_t)x, (uint8_t)y, (uint8_t)speed,(uint8_t)dir) ;
+}
+
+//--------------向左捲動-----------------
+void scrollLeft(int x, int y, int speed,int dir) //向左捲動
+{
+  // x:startRow：起始列位址，範圍 0~7
+  // y:endRow：結束列位址，範圍 0~7
+  // speed:scrollSpeed：滾動速度
+  //   0x07 (SCROLL_2FRAMES)：滾動 2 幀
+  //   0x04 (SCROLL_3FRAMES)：滾動 3 幀
+  //   0x05 (SCROLL_4FRAMES)：滾動 4 幀
+  //   0x00 (SCROLL_5FRAMES)：滾動 5 幀
+  //   0x06 (SCROLL_25FRAMES)：滾動 25 幀
+  //   0x01 (SCROLL_64FRAMES)：滾動 64 幀
+  //   0x02 (SCROLL_128FRAMES)：滾動 128 幀
+  //   0x03 (SCROLL_256FRAMES)：滾動 256 幀
+  // dir:scrollVDirection：對角滾動方向
+  //   0x00 (SCROLLV_NONE)：不滾動
+  //   0x01 (SCROLLV_TOP)：向上滾動
+  //   0x3F (SCROLLV_BOTTOM)：向下滾動
+BMD31.startScrollLeft((uint8_t)x, (uint8_t)y, (uint8_t)speed,(uint8_t)dir) ;
+}
+
+//-----------------停止滾動-----------------------
+void stopScroll() //停止滾動
+{
+  BMD31.stopScroll();   //停止滾動
 }
 
 //--------------------
